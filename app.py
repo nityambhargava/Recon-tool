@@ -1,90 +1,82 @@
 """
-app.py  —  ReconTool Flask application
-In-memory file processing. No files saved to disk.
+app.py  -  ReconTool Flask application
+In-memory file processing. No files saved to disk permanently.
 
 Local run:
-    python app.py
-    Open http://127.0.0.1:5000
+    python app.py  ->  http://127.0.0.1:5000
 
-Render.com deploy:
-    Build command:  pip install -r requirements.txt
-    Start command:  gunicorn app:app
+Render deploy:
+    Build:  pip install -r requirements.txt
+    Start:  gunicorn app:app
 """
 
+import io
+import uuid
 from flask import (Flask, render_template, request,
-                   redirect, url_for, session, flash)
+                   redirect, url_for, session, send_file)
 
 from ingestion.loader import load_from_bytes, get_date_range
 from modules.engine import compute_dashboard, build_actionables, CHANNELS
+from modules.parser import convert_txt_to_tsv
 
 app = Flask(__name__)
 app.secret_key = "recon-secret-change-in-prod"
 
-ALLOWED_EXT = {".csv", ".xlsx", ".xls"}
+# Server-side in-memory store for large binary results (zip downloads)
+# Key: uuid string  Value: bytes
+_ZIP_STORE: dict[str, bytes] = {}
+
+ALLOWED_RECON   = {".csv", ".xlsx", ".xls"}
+ALLOWED_PARSER  = {".txt", ".zip"}
 
 
-def _allowed(filename: str) -> bool:
+def _ext(filename):
     from pathlib import Path
-    return Path(filename).suffix.lower() in ALLOWED_EXT
+    return Path(filename).suffix.lower()
 
 
-# ── Routes ─────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Dashboard routes
+# ---------------------------------------------------------------------------
 
 @app.route("/", methods=["GET"])
 def index():
-    """Upload / landing page."""
     error = session.pop("upload_error", None)
     return render_template("index.html", error=error)
 
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    """Receive file, process in-memory, store result in session."""
     f = request.files.get("file")
-
     if not f or not f.filename:
         session["upload_error"] = "No file selected."
         return redirect(url_for("index"))
-
-    if not _allowed(f.filename):
+    if _ext(f.filename) not in ALLOWED_RECON:
         session["upload_error"] = "Unsupported file type. Please upload CSV or Excel."
         return redirect(url_for("index"))
-
     try:
-        file_bytes = f.read()
-        df         = load_from_bytes(file_bytes, f.filename)
-        date_range = get_date_range(df)
-        data       = compute_dashboard(df, date_range)
-
-        # Store computed data in session (JSON-serialisable)
+        df         = load_from_bytes(f.read(), f.filename)
+        data       = compute_dashboard(df, get_date_range(df))
         session["dashboard_data"] = data
         session["filename"]       = f.filename
-
     except Exception as exc:
         session["upload_error"] = str(exc)
         return redirect(url_for("index"))
-
     return redirect(url_for("dashboard"))
 
 
 @app.route("/dashboard", methods=["GET"])
 def dashboard():
-    """Render the dashboard from session-stored computed data."""
     data     = session.get("dashboard_data")
     filename = session.get("filename")
-
     if not data:
         return redirect(url_for("index"))
-
     active_channel = request.args.get("channel", CHANNELS[0])
     if active_channel not in data["channels"]:
         active_channel = CHANNELS[0]
-
     channel_data = data["channels"][active_channel]
-    actionables  = []
-    if channel_data["totalOrders"] > 0:
-        actionables = build_actionables(channel_data["overall"], active_channel)
-
+    actionables  = (build_actionables(channel_data["overall"], active_channel)
+                    if channel_data["totalOrders"] > 0 else [])
     return render_template(
         "dashboard.html",
         data=data,
@@ -94,11 +86,73 @@ def dashboard():
     )
 
 
-# ── Entry point ────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Parser routes
+# ---------------------------------------------------------------------------
+
+@app.route("/parser", methods=["GET"])
+def parser():
+    error  = session.pop("parser_error", None)
+    result = session.pop("parser_result", None)
+    return render_template("parser.html", error=error, result=result)
+
+
+@app.route("/parser/convert", methods=["POST"])
+def parser_convert():
+    uploaded = request.files.getlist("files")
+    if not uploaded or all(f.filename == "" for f in uploaded):
+        session["parser_error"] = "No files selected."
+        return redirect(url_for("parser"))
+
+    invalid = [f.filename for f in uploaded
+               if f.filename and _ext(f.filename) not in ALLOWED_PARSER]
+    if invalid:
+        session["parser_error"] = (
+            f"Only .txt and .zip files are supported. "
+            f"Invalid: {', '.join(invalid)}"
+        )
+        return redirect(url_for("parser"))
+
+    files_data = [(f.filename, f.read()) for f in uploaded if f.filename]
+    try:
+        zip_bytes, count, errors = convert_txt_to_tsv(files_data)
+        if count == 0:
+            session["parser_error"] = "No .txt files found to convert."
+            return redirect(url_for("parser"))
+
+        # Store zip server-side (too large for cookie session)
+        zip_key = str(uuid.uuid4())
+        _ZIP_STORE[zip_key] = zip_bytes
+
+        session["parser_zip_key"] = zip_key
+        session["parser_result"]  = {"count": count, "errors": errors}
+    except Exception as exc:
+        session["parser_error"] = str(exc)
+
+    return redirect(url_for("parser"))
+
+
+@app.route("/parser/download", methods=["GET"])
+def parser_download():
+    zip_key   = session.get("parser_zip_key")
+    zip_bytes = _ZIP_STORE.get(zip_key) if zip_key else None
+    if not zip_bytes:
+        return redirect(url_for("parser"))
+    return send_file(
+        io.BytesIO(zip_bytes),
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name="converted_tsvs.zip",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     print("\n  ReconTool")
-    print("  ─────────────────────────────────")
+    print("  ────────────────────────────")
     print("  http://127.0.0.1:5000")
     print("  Ctrl+C to stop\n")
     app.run(debug=True, port=5000)
