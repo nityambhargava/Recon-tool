@@ -1,0 +1,162 @@
+/* ── SECTION TABS (shared across all pages) ── */
+.section-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 16px 0 0;
+  border-bottom: 1px solid #1e2235;
+  margin-bottom: 0;
+}
+
+.stab {
+  font-family: 'Instrument Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: #5a6080;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  bottom: -1px;
+}
+
+.stab:hover:not(.active):not(.disabled) {
+  color: #e2e5f0;
+  background: rgba(255,255,255,0.04);
+}
+
+.stab.active {
+  color: #e2e5f0;
+  background: #0f1117;
+  border-color: #1e2235;
+  border-bottom-color: #0f1117;
+}
+
+.stab.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.coming {
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(77,114,255,0.15);
+  color: #7a9bff;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+/* ── RESULT BANNER ── */
+.result-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(35,201,122,0.08);
+  border: 1px solid rgba(35,201,122,0.25);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.result-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #23c97a;
+  color: #0b0d12;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.result-title {
+  font-size: 13px;
+  color: #23c97a;
+  font-weight: 600;
+}
+
+.result-errors {
+  font-size: 11px;
+  color: #6b7399;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.err-pill {
+  background: rgba(232,69,69,0.1);
+  border: 1px solid rgba(232,69,69,0.2);
+  color: #e84545;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'Instrument Mono', monospace;
+}
+
+.download-link {
+  margin-left: auto;
+  font-family: 'Instrument Mono', monospace;
+  font-size: 11px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(35,201,122,0.35);
+  background: rgba(35,201,122,0.1);
+  color: #23c97a;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.download-link:hover {
+  background: rgba(35,201,122,0.18);
+}
+
+/* ── FILE LIST (multi-file preview) ── */
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.file-list:empty {
+  display: none;
+}
+
+.file-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0f1117;
+  border: 1px solid #1e2235;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-family: 'Instrument Mono', monospace;
+  font-size: 11px;
+}
+
+.file-list-icon { color: #4d72ff; flex-shrink: 0; }
+.file-list-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e2e5f0; }
+.file-list-size { color: #5a6080; white-space: nowrap; }
+.file-list-badge {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(77,114,255,0.12);
+  color: #7a9bff;
+  flex-shrink: 0;
+}
+.file-list-badge.zip {
+  background: rgba(245,166,35,0.12);
+  color: #f5a623;
+}
