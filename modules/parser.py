@@ -31,7 +31,7 @@ def convert_txt_to_tsv(files: list) -> tuple[bytes, int, list]:
     merged_frames = []
     errors        = []
 
-    for i, (fname, data) in enumerate(txt_files):
+    for fname, data in txt_files:
         try:
             df = _parse_txt(fname, data)
             merged_frames.append(df)
