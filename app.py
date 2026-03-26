@@ -11,29 +11,20 @@ Render deploy:
 """
 
 import io
-import json
 import uuid
-from dataclasses import asdict
 
 from flask import (Flask, render_template, request,
                    redirect, url_for, session, send_file)
 
-import pandas as pd
 from ingestion.loader import load_from_bytes, get_date_range
 from modules.engine import compute_dashboard, build_actionables, CHANNELS
 from modules.parser import convert_txt_to_tsv
-from modules.return_logic import (
-    DEFAULT_CLAIM_WINDOWS,
-    process_report,
-    putaway_to_df,
-    not_deliv_to_df,
-)
 
 app = Flask(__name__)
 app.secret_key = "recon-secret-change-in-prod"
 
-# Server-side store for large binary results (zip downloads)
-_ZIP_STORE: dict = {}
+# Server-side store for large binary results
+_STORE: dict = {}
 
 ALLOWED_RECON  = {".csv", ".xlsx", ".xls"}
 ALLOWED_PARSER = {".txt", ".zip"}
@@ -96,15 +87,6 @@ def dashboard():
 
 
 # ---------------------------------------------------------------------------
-# Dashboard — Return TAT
-# ---------------------------------------------------------------------------
-
-@app.route("/return-dashboard", methods=["GET"])
-def return_dashboard():
-    return render_template("return_dashboard.html")
-
-
-# ---------------------------------------------------------------------------
 # Parser
 # ---------------------------------------------------------------------------
 
@@ -136,7 +118,7 @@ def parser_convert():
             session["parser_error"] = "No .txt files found to convert."
             return redirect(url_for("parser"))
         tsv_key = str(uuid.uuid4())
-        _ZIP_STORE[tsv_key] = tsv_bytes
+        _STORE[tsv_key]           = tsv_bytes
         session["parser_tsv_key"] = tsv_key
         session["parser_result"]  = {"count": count, "errors": errors}
     except Exception as exc:
@@ -147,7 +129,7 @@ def parser_convert():
 @app.route("/parser/download", methods=["GET"])
 def parser_download():
     tsv_key   = session.get("parser_tsv_key")
-    tsv_bytes = _ZIP_STORE.get(tsv_key) if tsv_key else None
+    tsv_bytes = _STORE.get(tsv_key) if tsv_key else None
     if not tsv_bytes:
         return redirect(url_for("parser"))
     return send_file(
