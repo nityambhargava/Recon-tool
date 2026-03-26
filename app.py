@@ -11,23 +11,32 @@ Render deploy:
 """
 
 import io
+import json
 import uuid
+from dataclasses import asdict
+
 from flask import (Flask, render_template, request,
                    redirect, url_for, session, send_file)
 
+import pandas as pd
 from ingestion.loader import load_from_bytes, get_date_range
 from modules.engine import compute_dashboard, build_actionables, CHANNELS
 from modules.parser import convert_txt_to_tsv
+from modules.return_logic import (
+    DEFAULT_CLAIM_WINDOWS,
+    process_report,
+    putaway_to_df,
+    not_deliv_to_df,
+)
 
 app = Flask(__name__)
 app.secret_key = "recon-secret-change-in-prod"
 
-# Server-side in-memory store for large binary results (zip downloads)
-# Key: uuid string  Value: bytes
-_ZIP_STORE: dict[str, bytes] = {}
+# Server-side store for large binary results (zip downloads)
+_ZIP_STORE: dict = {}
 
-ALLOWED_RECON   = {".csv", ".xlsx", ".xls"}
-ALLOWED_PARSER  = {".txt", ".zip"}
+ALLOWED_RECON  = {".csv", ".xlsx", ".xls"}
+ALLOWED_PARSER = {".txt", ".zip"}
 
 
 def _ext(filename):
@@ -36,7 +45,7 @@ def _ext(filename):
 
 
 # ---------------------------------------------------------------------------
-# Dashboard routes
+# Dashboard — Reconciliation
 # ---------------------------------------------------------------------------
 
 @app.route("/", methods=["GET"])
@@ -55,8 +64,8 @@ def upload():
         session["upload_error"] = "Unsupported file type. Please upload CSV or Excel."
         return redirect(url_for("index"))
     try:
-        df         = load_from_bytes(f.read(), f.filename)
-        data       = compute_dashboard(df, get_date_range(df))
+        df   = load_from_bytes(f.read(), f.filename)
+        data = compute_dashboard(df, get_date_range(df))
         session["dashboard_data"] = data
         session["filename"]       = f.filename
     except Exception as exc:
@@ -87,7 +96,16 @@ def dashboard():
 
 
 # ---------------------------------------------------------------------------
-# Parser routes
+# Dashboard — Return TAT
+# ---------------------------------------------------------------------------
+
+@app.route("/return-dashboard", methods=["GET"])
+def return_dashboard():
+    return render_template("return_dashboard.html")
+
+
+# ---------------------------------------------------------------------------
+# Parser
 # ---------------------------------------------------------------------------
 
 @app.route("/parser", methods=["GET"])
@@ -103,7 +121,6 @@ def parser_convert():
     if not uploaded or all(f.filename == "" for f in uploaded):
         session["parser_error"] = "No files selected."
         return redirect(url_for("parser"))
-
     invalid = [f.filename for f in uploaded
                if f.filename and _ext(f.filename) not in ALLOWED_PARSER]
     if invalid:
@@ -112,37 +129,32 @@ def parser_convert():
             f"Invalid: {', '.join(invalid)}"
         )
         return redirect(url_for("parser"))
-
     files_data = [(f.filename, f.read()) for f in uploaded if f.filename]
     try:
-        zip_bytes, count, errors = convert_txt_to_tsv(files_data)
+        tsv_bytes, count, errors = convert_txt_to_tsv(files_data)
         if count == 0:
             session["parser_error"] = "No .txt files found to convert."
             return redirect(url_for("parser"))
-
-        # Store zip server-side (too large for cookie session)
-        zip_key = str(uuid.uuid4())
-        _ZIP_STORE[zip_key] = zip_bytes
-
-        session["parser_zip_key"] = zip_key
+        tsv_key = str(uuid.uuid4())
+        _ZIP_STORE[tsv_key] = tsv_bytes
+        session["parser_tsv_key"] = tsv_key
         session["parser_result"]  = {"count": count, "errors": errors}
     except Exception as exc:
         session["parser_error"] = str(exc)
-
     return redirect(url_for("parser"))
 
 
 @app.route("/parser/download", methods=["GET"])
 def parser_download():
-    zip_key   = session.get("parser_zip_key")
-    zip_bytes = _ZIP_STORE.get(zip_key) if zip_key else None
-    if not zip_bytes:
+    tsv_key   = session.get("parser_tsv_key")
+    tsv_bytes = _ZIP_STORE.get(tsv_key) if tsv_key else None
+    if not tsv_bytes:
         return redirect(url_for("parser"))
     return send_file(
-        io.BytesIO(zip_bytes),
-        mimetype="application/zip",
+        io.BytesIO(tsv_bytes),
+        mimetype="text/tab-separated-values",
         as_attachment=True,
-        download_name="converted_tsvs.zip",
+        download_name="merged_output.tsv",
     )
 
 
