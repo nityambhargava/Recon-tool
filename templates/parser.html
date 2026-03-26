@@ -59,7 +59,7 @@
       <div class="result-banner">
         <span class="result-icon">✓</span>
         <div>
-          <div class="result-title">Converted {{ result.count }} file{{ 's' if result.count != 1 else '' }} successfully</div>
+          <div class="result-title">{{ result.count }} file{{ 's' if result.count != 1 else '' }} merged into one TSV</div>
           {% if result.errors %}
           <div class="result-errors">
             {{ result.errors | length }} file(s) failed:
@@ -69,7 +69,7 @@
           </div>
           {% endif %}
         </div>
-        <a href="/parser/download" class="download-link">&#8595; Download ZIP</a>
+        <a href="/parser/download" class="download-link">&#8595; Download merged.tsv</a>
       </div>
       {% endif %}
 
@@ -84,7 +84,7 @@
           </div>
           <div class="drop-title" id="dropTitle">Drag &amp; drop your files here</div>
           <div class="drop-sub">or click to browse</div>
-          <div class="drop-formats">.TXT files &nbsp;·&nbsp; or a single .ZIP containing .TXT files</div>
+          <div class="drop-formats">.TXT files &nbsp;·&nbsp; or a single .ZIP containing .TXT files &nbsp;·&nbsp; output: one merged .TSV</div>
         </div>
         <input type="file" name="files" id="fileInput" accept=".txt,.zip" multiple required/>
       </div>
@@ -92,7 +92,7 @@
       <div class="file-list" id="fileList"></div>
 
       <button type="submit" class="submit-btn" id="submitBtn" disabled>
-        <span class="submit-text">Convert to TSV</span>
+        <span class="submit-text">Merge &amp; Convert to TSV</span>
         <span class="submit-arrow">→</span>
       </button>
 
