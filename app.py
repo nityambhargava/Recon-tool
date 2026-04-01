@@ -7,10 +7,12 @@ Local run:
 
 Render deploy:
     Build:  pip install -r requirements.txt
-    Start:  gunicorn app:app
+    Start:  gunicorn app:app --timeout 120 --workers 1
 """
 
 import io
+import csv
+import json
 import uuid
 
 from flask import (Flask, render_template, request,
@@ -19,6 +21,7 @@ from flask import (Flask, render_template, request,
 from ingestion.loader import load_from_bytes, get_date_range
 from modules.engine import compute_dashboard, build_actionables, CHANNELS
 from modules.parser import convert_txt_to_tsv
+from modules.ajio_ledger import parse_ledger_from_bytes
 
 app = Flask(__name__)
 app.secret_key = "recon-secret-change-in-prod"
@@ -87,7 +90,7 @@ def dashboard():
 
 
 # ---------------------------------------------------------------------------
-# Parser
+# Parser — File Converter
 # ---------------------------------------------------------------------------
 
 @app.route("/parser", methods=["GET"])
@@ -137,6 +140,53 @@ def parser_download():
         mimetype="text/tab-separated-values",
         as_attachment=True,
         download_name="merged_output.tsv",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Parser — Ajio Ledger
+# ---------------------------------------------------------------------------
+
+@app.route("/parser/ajio-ledger", methods=["GET"])
+def ajio_ledger():
+    error = session.pop("ajio_error", None)
+    return render_template("ajio_ledger_upload.html", error=error)
+
+
+@app.route("/parser/ajio-ledger/analyse", methods=["POST"])
+def ajio_ledger_analyse():
+    f = request.files.get("file")
+    if not f or not f.filename:
+        session["ajio_error"] = "No file selected."
+        return redirect(url_for("ajio_ledger"))
+    if _ext(f.filename) != ".csv":
+        session["ajio_error"] = "Only CSV files are accepted."
+        return redirect(url_for("ajio_ledger"))
+    try:
+        file_bytes = f.read()
+        ledger_data = parse_ledger_from_bytes(file_bytes)
+        # Store in server-side store (too large for cookie session)
+        key = str(uuid.uuid4())
+        _STORE[key] = ledger_data
+        session["ajio_ledger_key"]  = key
+        session["ajio_filename"]    = f.filename
+    except Exception as exc:
+        session["ajio_error"] = str(exc)
+        return redirect(url_for("ajio_ledger"))
+    return redirect(url_for("ajio_ledger_dashboard"))
+
+
+@app.route("/parser/ajio-ledger/dashboard", methods=["GET"])
+def ajio_ledger_dashboard():
+    key      = session.get("ajio_ledger_key")
+    filename = session.get("ajio_filename", "")
+    data     = _STORE.get(key) if key else None
+    if not data:
+        return redirect(url_for("ajio_ledger"))
+    return render_template(
+        "ajio_ledger.html",
+        ledger_data=data,
+        filename=filename,
     )
 
 
