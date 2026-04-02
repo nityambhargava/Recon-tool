@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ReconTool — Ajio Ledger</title>
+<link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=Instrument+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/css/upload.css"/>
+<link rel="stylesheet" href="/static/css/parser.css"/>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<div class="page">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-brand">
+      <span class="nav-icon"></span>
+      <span class="nav-name">ReconTool</span>
+    </div>
+    <div class="nav-links">
+      <span class="nav-tag">Beta</span>
+    </div>
+  </nav>
+
+  <!-- SECTION TABS -->
+  <div class="section-tabs">
+    <a href="/" class="stab">Dashboard</a>
+    <a href="/parser" class="stab active">Parser</a>
+    <span class="stab disabled">Predictor <span class="coming">soon</span></span>
+  </div>
+  <!-- PARSER SUB-TABS -->
+  <div class="section-tabs" style="border-top:none;padding-top:6px;">
+    <a href="/parser" class="stab" style="font-size:11px;padding:6px 16px;">File Converter</a>
+    <a href="/parser/ajio-ledger" class="stab active" style="font-size:11px;padding:6px 16px;">Ajio Ledger</a>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Ajio Ledger Explanation</div>
+    <h1 class="hero-title">
+      Upload your <span class="hero-accent">Ajio SAP ledger</span><br/>and get instant clarity.
+    </h1>
+    <p class="hero-sub">
+      Upload the Ajio vendor ledger CSV exported from SAP.
+      Get a full month-by-month breakdown of sales, returns, deductions,
+      expected payouts, and outstanding balances — by zone and overall.
+    </p>
+  </div>
+
+  <!-- UPLOAD CARD -->
+  <div class="upload-wrap">
+    <form id="ajioForm" method="POST" action="/parser/ajio-ledger/analyse" enctype="multipart/form-data">
+
+      {% if error %}
+      <div class="error-banner">
+        <span class="error-icon">!</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-inner">
+          <div class="drop-icon-wrap">
+            <svg class="drop-icon" viewBox="0 0 48 48" fill="none">
+              <rect x="6" y="8" width="36" height="32" rx="4" stroke="currentColor" stroke-width="2"/>
+              <path d="M16 8V6a2 2 0 012-2h12a2 2 0 012 2v2" stroke="currentColor" stroke-width="2"/>
+              <path d="M24 20v12M18 26l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="drop-title" id="dropTitle">Drag &amp; drop your Ajio ledger CSV here</div>
+          <div class="drop-sub">or click to browse</div>
+          <div class="drop-formats">CSV only &nbsp;·&nbsp; SAP export format</div>
+        </div>
+        <input type="file" name="file" id="fileInput" accept=".csv" required/>
+      </div>
+
+      <div class="file-preview" id="filePreview" style="display:none">
+        <div class="file-preview-inner">
+          <span class="file-icon">
+            <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+              <path d="M4 2h8l4 4v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M12 2v4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="file-name" id="fileName">—</span>
+          <span class="file-size" id="fileSize">—</span>
+          <button type="button" class="file-clear" id="fileClear" title="Remove">&#x2715;</button>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn" disabled>
+        <span class="submit-text">Analyse Ledger</span>
+        <span class="submit-arrow">→</span>
+      </button>
+
+    </form>
+  </div>
+
+  <!-- INFO CHIPS -->
+  <div class="features">
+    <div class="feat"><span class="feat-dot" style="background:#4d72ff"></span>Monthly P&amp;L breakdown</div>
+    <div class="feat"><span class="feat-dot" style="background:#23c97a"></span>Sales · Returns · Deductions</div>
+    <div class="feat"><span class="feat-dot" style="background:#f5a623"></span>Zone-wise (HS · HSHR · HSMAH · HSWB)</div>
+    <div class="feat"><span class="feat-dot" style="background:#b84fc8"></span>Email draft generator</div>
+  </div>
+
+</div>
+
+<script src="/static/js/upload.js"></script>
+</body>
+</html>

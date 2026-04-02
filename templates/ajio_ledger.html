@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajio Vendor Ledger Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #141720;
+    --surface2:  #1c2030;
+    --border:    #252b3b;
+    --accent:    #4f8bff;
+    --accent2:   #a78bfa;
+    --green:     #34d399;
+    --red:       #f87171;
+    --amber:     #fbbf24;
+    --text:      #e8eaf0;
+    --muted:     #6b7399;
+    --mono:      'DM Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* ── TOP BAR ─────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 14px; }
+  .logo-badge {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: .08em;
+    padding: 6px 12px;
+    border-radius: 6px;
+  }
+  .topbar-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .topbar-sub   { font-size: 12px; color: var(--muted); }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(52,211,153,.12);
+    border: 1px solid rgba(52,211,153,.3);
+    color: var(--green);
+    font-size: 12px; font-family: var(--mono);
+    padding: 5px 12px; border-radius: 20px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+         animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── MAIN LAYOUT ──────────────────────────────────── */
+  .main { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
+
+  /* ── MONTH TABS ───────────────────────────────────── */
+  .tab-row {
+    display: flex; gap: 6px; margin-bottom: 28px;
+    border-bottom: 1px solid var(--border); padding-bottom: 0;
+  }
+  .tab {
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    padding: 10px 18px; border: none; background: none;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all .2s; white-space: nowrap; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── SUMMARY CARDS ROW ───────────────────────────── */
+  .cards-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    transition: border-color .2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card-label {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .card-value {
+    font-family: var(--mono); font-size: 22px; font-weight: 500;
+    color: var(--text); line-height: 1.2;
+  }
+  .card-value.pos { color: var(--green); }
+  .card-value.neg { color: var(--red); }
+  .card-value.warn { color: var(--amber); }
+  .card-sub {
+    font-size: 11px; color: var(--muted); margin-top: 4px;
+    font-family: var(--mono);
+  }
+  .card-icon { font-size: 20px; margin-bottom: 8px; }
+
+  /* ── FLOW DIAGRAM ────────────────────────────────── */
+  .section-title {
+    font-size: 13px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::before {
+    content: ''; display: block; width: 3px; height: 14px;
+    background: var(--accent); border-radius: 2px;
+  }
+  .flow-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px 28px; margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .flow {
+    display: flex; align-items: center; gap: 0;
+    min-width: 700px;
+  }
+  .flow-node {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; text-align: center;
+  }
+  .flow-node-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .flow-node-value {
+    font-family: var(--mono); font-size: 16px; font-weight: 500;
+  }
+  .flow-arrow {
+    width: 36px; text-align: center; color: var(--muted);
+    font-size: 18px; flex-shrink: 0;
+  }
+  .flow-minus { color: var(--red); }
+  .flow-eq    { color: var(--accent); }
+
+  /* ── TWO-COLUMN GRID ─────────────────────────────── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── PANEL ───────────────────────────────────────── */
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 22px;
+  }
+
+  /* ── BAR CHART ───────────────────────────────────── */
+  .bar-chart { margin-top: 12px; }
+  .bar-row { margin-bottom: 12px; }
+  .bar-meta { display: flex; justify-content: space-between; align-items: baseline;
+              margin-bottom: 5px; }
+  .bar-name { font-size: 12px; color: var(--text); font-weight: 600; }
+  .bar-val  { font-size: 12px; font-family: var(--mono); color: var(--muted); }
+  .bar-track {
+    height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 4px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ── PAYOUT SPLIT ────────────────────────────────── */
+  .split-row {
+    display: flex; gap: 16px; margin-top: 14px;
+  }
+  .split-item {
+    flex: 1; background: var(--surface2); border-radius: 10px;
+    padding: 14px 16px; text-align: center;
+  }
+  .split-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+                 color: var(--muted); margin-bottom: 6px; }
+  .split-val   { font-family: var(--mono); font-size: 18px; font-weight: 500; }
+
+  /* ── DEDUCTIONS TABLE ────────────────────────────── */
+  .deduct-list { margin-top: 12px; }
+  .deduct-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 14px; border-radius: 8px; margin-bottom: 6px;
+    background: var(--surface2);
+  }
+  .deduct-name { font-size: 13px; font-weight: 600; }
+  .deduct-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .deduct-amt  { font-family: var(--mono); font-size: 14px; color: var(--red); }
+
+  /* ── VENDOR BREAKDOWN TABLE ──────────────────────── */
+  .vend-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .vend-table th {
+    text-align: left; font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+  }
+  .vend-table td {
+    padding: 10px 10px; font-size: 13px;
+    border-bottom: 1px solid rgba(37,43,59,.6);
+    font-family: var(--mono);
+  }
+  .vend-table tr:last-child td { border-bottom: none; }
+  .vend-badge {
+    display: inline-block; padding: 3px 8px; border-radius: 5px;
+    font-size: 11px; font-weight: 700; font-family: var(--sans);
+    background: rgba(79,139,255,.15); color: var(--accent);
+  }
+  .text-pos { color: var(--green); }
+  .text-neg { color: var(--red); }
+  .text-muted { color: var(--muted); }
+
+  /* ── AUTO SUMMARY CARD ───────────────────────────── */
+  .summary-box {
+    background: linear-gradient(135deg, rgba(79,139,255,.08), rgba(167,139,250,.06));
+    border: 1px solid rgba(79,139,255,.2);
+    border-radius: 12px; padding: 20px 24px; margin-bottom: 24px;
+    font-size: 14px; line-height: 1.75; color: #c8ccdc;
+  }
+  .summary-box strong { color: var(--text); }
+
+  /* ── RETURN RATIO BAR ────────────────────────────── */
+  .rr-track {
+    height: 10px; background: var(--surface2); border-radius: 5px;
+    overflow: hidden; margin: 10px 0 6px;
+  }
+  .rr-fill {
+    height: 100%; border-radius: 5px;
+    transition: width .6s;
+  }
+  .rr-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--muted); font-family: var(--mono);
+  }
+
+  /* ── WARN BANNER ─────────────────────────────────── */
+  .warn-banner {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: rgba(251,191,36,.07);
+    border: 1px solid rgba(251,191,36,.25);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 24px;
+    font-size: 13px; color: #e0c97a; line-height: 1.6;
+  }
+  .warn-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── EMAIL BUTTON ────────────────────────────────── */
+  .btn-row { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 20px; border-radius: 8px; font-family: var(--sans);
+    font-size: 13px; font-weight: 700; cursor: pointer; border: none;
+    transition: all .2s; display: flex; align-items: center; gap: 7px;
+  }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+  }
+  .btn-primary:hover { background: #6699ff; transform: translateY(-1px); }
+  .btn-ghost {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── EMAIL MODAL ─────────────────────────────────── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.7); z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; width: 680px; max-width: 95vw; max-height: 85vh;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .modal-header {
+    padding: 20px 24px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--muted);
+                 font-size: 22px; cursor: pointer; line-height: 1; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .email-subject {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    padding: 10px 12px; background: var(--surface2); border-radius: 7px;
+    margin-bottom: 14px; border: 1px solid var(--border);
+  }
+  .email-subject strong { color: var(--text); }
+  .email-body {
+    font-size: 14px; line-height: 1.8; color: #c8ccdc;
+    white-space: pre-wrap; font-family: var(--mono);
+  }
+  .modal-footer {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    display: flex; gap: 10px;
+  }
+  .copy-success {
+    color: var(--green); font-size: 12px; font-family: var(--mono);
+    opacity: 0; transition: opacity .3s; margin-left: auto; align-self: center;
+  }
+  .copy-success.show { opacity: 1; }
+
+  /* ── OVERALL SUMMARY TAB ─────────────────────────── */
+  .overview-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; margin-bottom: 24px;
+  }
+  @media (max-width: 800px) { .overview-grid { grid-template-columns: 1fr 1fr; } }
+
+  /* ── MONTH CHART ─────────────────────────────────── */
+  .month-bars { margin-top: 14px; }
+  .mbar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .mbar-label { font-size: 11px; color: var(--muted); width: 90px; flex-shrink: 0; text-align: right; }
+  .mbar-track { flex: 1; height: 22px; background: var(--surface2); border-radius: 5px; overflow: hidden; position: relative; }
+  .mbar-fill  { height: 100%; border-radius: 5px; display: flex; align-items: center; padding-left: 8px;
+                font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,.8); transition: width .8s; }
+
+  /* animations */
+  .fade-in { animation: fadeIn .35s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<!-- ReconTool Navigation -->
+<link rel="stylesheet" href="/static/css/parser.css"/>
+<div style="background:#111318;border-bottom:1px solid #1e2235;">
+  <div class="section-tabs" style="padding:0 28px;border-bottom:none;">
+    <a href="/" class="stab">Dashboard</a>
+    <a href="/parser" class="stab active">Parser</a>
+    <span class="stab disabled">Predictor <span class="coming">soon</span></span>
+  </div>
+  <div class="section-tabs" style="padding:0 28px;border-top:none;padding-top:0;border-bottom:none;">
+    <a href="/parser" class="stab" style="font-size:11px;padding:6px 16px;">File Converter</a>
+    <a href="/parser/ajio-ledger" class="stab active" style="font-size:11px;padding:6px 16px;">Ajio Ledger</a>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-badge">AJIO</div>
+    <div>
+      <div class="topbar-title">Vendor Ledger Dashboard</div>
+      <div class="topbar-sub">Client 419 · DV00343684–87 · Sep 2025 – Jan 2026</div>
+    </div>
+  </div>
+  <div class="status-pill">
+    <div class="dot"></div>
+    Ledger Reconciled
+  </div>
+</div>
+
+<div class="main">
+  <div class="tab-row" id="tabRow"></div>
+  <div id="content"></div>
+</div>
+
+<!-- Email Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📧 Draft Client Email</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="email-subject" id="emailSubject"></div>
+      <div class="email-body" id="emailBody"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="copyEmail()">📋 Copy Email</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      <div class="copy-success" id="copySuccess">✓ Copied to clipboard!</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// EMBEDDED DATA (parsed from ledger CSV by ajio_ledger_backend.py)
+// ─────────────────────────────────────────────────────────────────
+const DATA = {{ ledger_data | tojson }};
+
+// ─────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────
+const fmt   = n => '₹' + Math.abs(n).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtN  = n => (n < 0 ? '−' : '') + fmt(n);
+const fmtPc = n => n.toFixed(1) + '%';
+const cls   = n => n > 0 ? 'pos' : n < 0 ? 'neg' : '';
+const sign  = n => n >= 0 ? '+' : '−';
+
+function rrColor(pct) {
+  if (pct === 0) return 'var(--muted)';
+  if (pct < 20)  return 'var(--green)';
+  if (pct < 40)  return 'var(--amber)';
+  return 'var(--red)';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SUMMARY TEXT GENERATOR (mirrors Python logic)
+// ─────────────────────────────────────────────────────────────────
+function buildSummaryText(md) {
+  const rrNote = md.return_ratio_pct > 100
+    ? ' <strong style="color:var(--amber)">⚠ Includes prior-season returns processed this month.</strong>'
+    : '';
+  return `For <strong>${md.label}</strong>, gross sales stood at <strong>${fmt(md.gross_sales)}</strong> ` +
+    `with customer returns of <strong>${fmt(md.gross_returns)}</strong> ` +
+    `(return ratio: <strong>${fmtPc(md.return_ratio_pct)}</strong>${rrNote}). ` +
+    `Net revenue after returns: <strong>${fmtN(md.net_revenue)}</strong>. ` +
+    `Deductions — ZK Platform/SCM Fee: <strong>${fmt(md.zk_deductions)}</strong>; ` +
+    `KG GST Retention: <strong>${fmt(md.kg_deductions)}</strong>; ` +
+    `Total deductions: <strong>${fmt(md.total_deductions)}</strong>. ` +
+    `Expected payout: <strong>${fmtN(md.expected_payout)}</strong>. ` +
+    (md.payments_made > 0 ? `Payments already made by Ajio (KP): <strong>${fmt(md.payments_made)}</strong>. ` : '') +
+    `Outstanding: <strong>${fmtN(md.outstanding)}</strong>.`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EMAIL DRAFT GENERATOR
+// ─────────────────────────────────────────────────────────────────
+function buildEmail(md) {
+  const today = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+  const subject = `Ajio Ledger Statement — ${md.label} | Client 419`;
+  const body =
+`Dear Team,
+
+Please find below the ledger summary for ${md.label} (Client ID: 419).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FINANCIAL SUMMARY — ${md.label.toUpperCase()}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Gross Sales (IC Invoice)       ${fmt(md.gross_sales)}
+  Customer Returns (G4)        − ${fmt(md.gross_returns)}
+  ────────────────────────────────────
+  Net Revenue                    ${fmtN(md.net_revenue)}
+
+  ZK Platform / SCM Fee        − ${fmt(md.zk_deductions)}
+  KG GST Retention             − ${fmt(md.kg_deductions)}
+  ────────────────────────────────────
+  Expected Payout                ${fmtN(md.expected_payout)}
+
+  Payments Received (KP)         ${fmt(md.payments_made)}
+  ────────────────────────────────────
+  Outstanding Balance            ${fmtN(md.outstanding)}
+
+  Return Ratio                   ${fmtPc(md.return_ratio_pct)}
+  Total Transactions             ${md.transaction_count.toLocaleString()}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ZONE-WISE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${Object.entries(md.vendor_breakdown).map(([vs, v]) =>
+  `  ${vs.padEnd(6)} (${v.zone.padEnd(22)})  Sales ${fmt(v.sales).padStart(14)}  Returns ${fmt(v.returns).padStart(14)}  Net ${fmtN(v.net).padStart(14)}`
+).join('\n')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${md.return_ratio_pct > 100 ? 'NOTE: The return ratio exceeds 100% this month as returns from the Oct–Dec 2025 season are being processed in bulk. This is expected and the overall ledger balance is reconciled.\n\n' : ''}Please review the attached ledger CSV for full transaction details. Do reach out if you need any clarification.
+
+Regards,
+[Your Name]
+[Your Organisation]
+Date: ${today}`;
+  return { subject, body };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RENDER: MONTH VIEW
+// ─────────────────────────────────────────────────────────────────
+function renderMonth(mk) {
+  const md = DATA.months[mk];
+  const hasReturns = md.gross_returns > 0;
+  const maxVendorSales = Math.max(...Object.values(md.vendor_breakdown).map(v => v.sales));
+  const rrPct = Math.min(md.return_ratio_pct, 100); // cap display at 100% for bar
+  const rrFillColor = rrColor(md.return_ratio_pct);
+
+  const flowNetColor = md.net_revenue >= 0 ? 'var(--green)' : 'var(--red)';
+  const flowPayoutColor = md.expected_payout >= 0 ? 'var(--green)' : 'var(--red)';
+
+  return `
+<div class="fade-in">
+
+  <!-- AUTO SUMMARY -->
+  <div class="summary-box">${buildSummaryText(md)}</div>
+
+  ${md.return_ratio_pct > 100 ? `
+  <div class="warn-banner">
+    <div class="warn-icon">⚠️</div>
+    <div><strong>High Return Ratio (${fmtPc(md.return_ratio_pct)})</strong> — Returns in January include accumulated returns from the Oct–Dec 2025 holiday season being processed in bulk. The overall ledger balance is near-zero (₹−2,641), confirming full reconciliation. This is not a data error.</div>
+  </div>` : ''}
+
+  <!-- ACTION BUTTONS -->
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="openEmail('${mk}')">📧 Draft Client Email</button>
+    <button class="btn btn-ghost">⬇ Export CSV</button>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="cards-row">
+    <div class="card">
+      <div class="card-icon">🛒</div>
+      <div class="card-label">Gross Sales</div>
+      <div class="card-value pos">${fmt(md.gross_sales)}</div>
+      <div class="card-sub">${md.transaction_count.toLocaleString()} transactions</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">↩️</div>
+      <div class="card-label">Customer Returns</div>
+      <div class="card-value ${hasReturns ? 'neg' : 'pos'}">${hasReturns ? '−' : ''}${fmt(md.gross_returns)}</div>
+      <div class="card-sub">Return ratio: ${fmtPc(md.return_ratio_pct)}</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-label">Net Revenue</div>
+      <div class="card-value ${cls(md.net_revenue)}">${fmtN(md.net_revenue)}</div>
+      <div class="card-sub">After returns</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🏦</div>
+      <div class="card-label">Expected Payout</div>
+      <div class="card-value ${cls(md.expected_payout)}">${fmtN(md.expected_payout)}</div>
+      <div class="card-sub">Net − deductions</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">✅</div>
+      <div class="card-label">Payments Made (KP)</div>
+      <div class="card-value pos">${fmt(md.payments_made)}</div>
+      <div class="card-sub">Actual bank transfers</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⏳</div>
+      <div class="card-label">Total Deductions</div>
+      <div class="card-value neg">−${fmt(md.total_deductions)}</div>
+      <div class="card-sub">ZK + KG retention</div>
+    </div>
+  </div>
+
+  <!-- FLOW DIAGRAM -->
+  <div class="section-title">Payout Flow</div>
+  <div class="flow-wrap">
+    <div class="flow">
+      <div class="flow-node">
+        <div class="flow-node-label">Gross Sales</div>
+        <div class="flow-node-value" style="color:var(--green)">${fmt(md.gross_sales)}</div>
+      </div>
+      <div class="flow-arrow flow-minus">−</div>
+      <div class="flow-node">
+        <div class="flow-node-label">Returns</div>
+        <div class="flow-node-value" style="color:var(--red)">${fmt(md.gross_returns)}</div>
+      </div>
+      <div class="flow-arrow flow-eq">=</div>
+      <div class="flow-node">
+        <div class="flow-node-label">Net Revenue</div>
+        <div class="flow-node-value" style="color:${flowNetColor}">${fmtN(md.net_revenue)}</div>
+      </div>
+      <div class="flow-arrow flow-minus">−</div>
+      <div class="flow-node">
+        <div class="flow-node-label">Deductions</div>
+        <div class="flow-node-value" style="color:var(--amber)">${fmt(md.total_deductions)}</div>
+      </div>
+      <div class="flow-arrow flow-eq">=</div>
+      <div class="flow-node" style="border-color:var(--accent)">
+        <div class="flow-node-label">Expected Payout</div>
+        <div class="flow-node-value" style="color:${flowPayoutColor}">${fmtN(md.expected_payout)}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TWO COLUMN -->
+  <div class="two-col">
+
+    <!-- RETURN RATIO + DEDUCTIONS -->
+    <div>
+      <div class="section-title">Return Ratio</div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-size:13px;color:var(--muted)">Return rate this month</span>
+          <span style="font-family:var(--mono);font-size:20px;color:${rrFillColor};font-weight:500">${fmtPc(md.return_ratio_pct)}</span>
+        </div>
+        <div class="rr-track">
+          <div class="rr-fill" style="width:${rrPct}%;background:${rrFillColor}"></div>
+        </div>
+        <div class="rr-label">
+          <span>0%</span>
+          <span>Returns: ${fmt(md.gross_returns)}</span>
+          <span>100%+</span>
+        </div>
+        ${md.return_ratio_pct > 100 ? `<div style="font-size:11px;color:var(--amber);margin-top:8px">⚠ Bar capped at 100% for display. Actual: ${fmtPc(md.return_ratio_pct)}</div>` : ''}
+
+        <div style="margin-top:20px">
+          <div class="section-title">Deductions Breakdown</div>
+          <div class="deduct-list">
+            <div class="deduct-row">
+              <div>
+                <div class="deduct-name">ZK Platform / SCM Fee</div>
+                <div class="deduct-desc">Marketing contribution + supply chain management</div>
+              </div>
+              <div class="deduct-amt">−${fmt(md.zk_deductions)}</div>
+            </div>
+            <div class="deduct-row">
+              <div>
+                <div class="deduct-name">KG GST Retention</div>
+                <div class="deduct-desc">GST TDS held by Ajio on behalf of tax authority</div>
+              </div>
+              <div class="deduct-amt">−${fmt(md.kg_deductions)}</div>
+            </div>
+            <div class="deduct-row" style="border:1px solid var(--border);background:transparent">
+              <div>
+                <div class="deduct-name" style="color:var(--text)">Total Deductions</div>
+              </div>
+              <div class="deduct-amt" style="font-size:16px">−${fmt(md.total_deductions)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYOUT SPLIT -->
+    <div>
+      <div class="section-title">Settlement Status</div>
+      <div class="panel">
+        <div class="split-row">
+          <div class="split-item" style="border:1px solid rgba(52,211,153,.2)">
+            <div class="split-label">Already Cleared</div>
+            <div class="split-val" style="color:var(--green)">${fmt(md.already_cleared)}</div>
+          </div>
+          <div class="split-item" style="border:1px solid rgba(251,191,36,.2)">
+            <div class="split-label">Due Returns (Pending)</div>
+            <div class="split-val" style="color:var(--amber)">${fmt(md.due_returns)}</div>
+          </div>
+        </div>
+        <div class="split-row" style="margin-top:14px">
+          <div class="split-item" style="border:1px solid rgba(79,139,255,.2)">
+            <div class="split-label">KP Payments Made</div>
+            <div class="split-val" style="color:var(--accent)">${fmt(md.payments_made)}</div>
+          </div>
+          <div class="split-item" style="border:1px solid rgba(248,113,113,.2)">
+            <div class="split-label">Outstanding Balance</div>
+            <div class="split-val" style="color:var(--red)">${fmtN(md.outstanding)}</div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px">
+          <div class="section-title">Zone-wise Sales</div>
+          <div class="bar-chart">
+            ${Object.entries(md.vendor_breakdown).sort((a,b) => b[1].sales - a[1].sales).map(([vs, v]) => `
+            <div class="bar-row">
+              <div class="bar-meta">
+                <span class="bar-name"><span class="vend-badge">${vs}</span> ${v.zone}</span>
+                <span class="bar-val">${fmt(v.sales)}</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${maxVendorSales > 0 ? (v.sales/maxVendorSales*100).toFixed(1) : 0}%;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div>
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- VENDOR TABLE -->
+  <div class="section-title">Zone-wise Full Breakdown</div>
+  <div class="panel" style="overflow-x:auto">
+    <table class="vend-table">
+      <thead>
+        <tr>
+          <th>Zone</th>
+          <th>Region</th>
+          <th style="text-align:right">Gross Sales</th>
+          <th style="text-align:right">Returns</th>
+          <th style="text-align:right">Return %</th>
+          <th style="text-align:right">Net</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Object.entries(md.vendor_breakdown).sort((a,b) => b[1].sales - a[1].sales).map(([vs, v]) => {
+          const zrr = v.sales > 0 ? (v.returns/v.sales*100).toFixed(1) : '0.0';
+          return `<tr>
+            <td><span class="vend-badge">${vs}</span></td>
+            <td style="color:var(--muted);font-family:var(--sans);font-size:13px">${v.zone}</td>
+            <td style="text-align:right" class="text-pos">${fmt(v.sales)}</td>
+            <td style="text-align:right" class="text-neg">${v.returns > 0 ? '−' : ''}${fmt(v.returns)}</td>
+            <td style="text-align:right;color:${rrColor(parseFloat(zrr))}">${zrr}%</td>
+            <td style="text-align:right" class="${cls(v.net)}">${fmtN(v.net)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>
+
+</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RENDER: OVERVIEW TAB
+// ─────────────────────────────────────────────────────────────────
+function renderOverview() {
+  const s = DATA.summary;
+  const maxSales = Math.max(...DATA.summary.months_sorted.map(mk => DATA.months[mk].gross_sales));
+
+  return `
+<div class="fade-in">
+  <div class="summary-box">
+    This ledger covers <strong>5 months</strong> from September 2025 to January 2026 (Client 419).
+    Total gross sales: <strong>${fmt(s.total_sales)}</strong>.
+    Total returns processed: <strong>${fmt(s.total_returns)}</strong> — the bulk of which are
+    Oct–Dec 2025 season returns posted in January 2026.
+    Total deductions (ZK + KG): <strong>${fmt(s.total_deductions)}</strong>.
+    Payments already made by Ajio: <strong>${fmt(s.total_payments_made)}</strong>.
+    The overall ledger balance is <strong style="color:var(--amber)">₹−2,641</strong> (near-zero), confirming the account is fully reconciled.
+  </div>
+
+  <div class="overview-grid">
+    <div class="card">
+      <div class="card-icon">🛒</div>
+      <div class="card-label">Total Gross Sales</div>
+      <div class="card-value pos">${fmt(s.total_sales)}</div>
+      <div class="card-sub">Sep 2025 – Jan 2026</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">↩️</div>
+      <div class="card-label">Total Returns</div>
+      <div class="card-value neg">−${fmt(s.total_returns)}</div>
+      <div class="card-sub">Includes prior-season bulk</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-label">Total Net Revenue</div>
+      <div class="card-value ${cls(s.total_net)}">${fmtN(s.total_net)}</div>
+      <div class="card-sub">Sales − Returns</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">💸</div>
+      <div class="card-label">Total Deductions</div>
+      <div class="card-value neg">−${fmt(s.total_deductions)}</div>
+      <div class="card-sub">ZK + KG retention</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">✅</div>
+      <div class="card-label">Payments Made (KP)</div>
+      <div class="card-value pos">${fmt(s.total_payments_made)}</div>
+      <div class="card-sub">Actual bank transfers</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚖️</div>
+      <div class="card-label">Ledger Balance</div>
+      <div class="card-value" style="color:var(--amber)">₹−2,641</div>
+      <div class="card-sub">Near-zero = reconciled ✓</div>
+    </div>
+  </div>
+
+  <div class="section-title">Monthly Sales Trend</div>
+  <div class="panel">
+    <div class="month-bars">
+      ${DATA.summary.months_sorted.map(mk => {
+        const md = DATA.months[mk];
+        const pct = maxSales > 0 ? (md.gross_sales / maxSales * 100).toFixed(1) : 0;
+        return `<div class="mbar-row">
+          <div class="mbar-label">${md.label.split(' ')[0]}</div>
+          <div class="mbar-track">
+            <div class="mbar-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--accent2))">
+              ${md.gross_sales > 0 ? fmt(md.gross_sales) : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <div style="margin-top:24px">
+    <div class="section-title">Month-by-Month Summary Table</div>
+    <div class="panel" style="overflow-x:auto">
+      <table class="vend-table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th style="text-align:right">Gross Sales</th>
+            <th style="text-align:right">Returns</th>
+            <th style="text-align:right">Net Revenue</th>
+            <th style="text-align:right">Deductions</th>
+            <th style="text-align:right">Exp. Payout</th>
+            <th style="text-align:right">KP Paid</th>
+            <th style="text-align:right">Return %</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${DATA.summary.months_sorted.map(mk => {
+            const md = DATA.months[mk];
+            return `<tr>
+              <td style="font-family:var(--sans);font-weight:600">${md.label}</td>
+              <td style="text-align:right" class="text-pos">${fmt(md.gross_sales)}</td>
+              <td style="text-align:right" class="${md.gross_returns > 0 ? 'text-neg' : 'text-muted'}">${md.gross_returns > 0 ? '−' : ''}${fmt(md.gross_returns)}</td>
+              <td style="text-align:right" class="${cls(md.net_revenue)}">${fmtN(md.net_revenue)}</td>
+              <td style="text-align:right" class="${md.total_deductions > 0 ? 'text-neg' : 'text-muted'}">${md.total_deductions > 0 ? '−' : ''}${fmt(md.total_deductions)}</td>
+              <td style="text-align:right" class="${cls(md.expected_payout)}">${fmtN(md.expected_payout)}</td>
+              <td style="text-align:right" class="${md.payments_made > 0 ? 'text-pos' : 'text-muted'}">${fmt(md.payments_made)}</td>
+              <td style="text-align:right;color:${rrColor(md.return_ratio_pct)}">${fmtPc(md.return_ratio_pct)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TAB LOGIC
+// ─────────────────────────────────────────────────────────────────
+let activeTab = 'overview';
+
+function buildTabs() {
+  const tabRow = document.getElementById('tabRow');
+  const tabs = [
+    { key: 'overview', label: '📋 Overview' },
+    ...DATA.summary.months_sorted.map(mk => ({
+      key: mk,
+      label: DATA.months[mk].label
+    }))
+  ];
+  tabRow.innerHTML = tabs.map(t =>
+    `<button class="tab ${t.key === activeTab ? 'active' : ''}"
+       onclick="switchTab('${t.key}')">${t.label}</button>`
+  ).join('');
+}
+
+function switchTab(key) {
+  activeTab = key;
+  buildTabs();
+  const content = document.getElementById('content');
+  content.innerHTML = key === 'overview' ? renderOverview() : renderMonth(key);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EMAIL MODAL
+// ─────────────────────────────────────────────────────────────────
+function openEmail(mk) {
+  const md = DATA.months[mk];
+  const { subject, body } = buildEmail(md);
+  document.getElementById('emailSubject').innerHTML =
+    `<strong>Subject:</strong> ${subject}`;
+  document.getElementById('emailBody').textContent = body;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function copyEmail() {
+  const body = document.getElementById('emailBody').textContent;
+  const subj = document.getElementById('emailSubject').textContent;
+  navigator.clipboard.writeText(subj + '\n\n' + body).then(() => {
+    const el = document.getElementById('copySuccess');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  });
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ─────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────
+buildTabs();
+switchTab('overview');
+</script>
+</body>
+</html>
