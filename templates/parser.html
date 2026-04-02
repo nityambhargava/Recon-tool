@@ -31,17 +31,21 @@
     <a href="/parser" class="stab active">Parser</a>
     <span class="stab disabled">Predictor <span class="coming">soon</span></span>
   </div>
+  <!-- PARSER SUB-TABS -->
+  <div class="section-tabs" style="border-top:none;padding-top:6px;">
+    <a href="/parser" class="stab active" style="font-size:11px;padding:6px 16px;">File Converter</a>
+    <a href="/parser/ajio-ledger" class="stab" style="font-size:11px;padding:6px 16px;">Ajio Ledger</a>
+  </div>
 
   <!-- HERO -->
   <div class="hero">
     <div class="hero-eyebrow">Parser / Converter</div>
     <h1 class="hero-title">
-      Merge &amp; convert <span class="hero-accent">.txt files</span><br/>into one TSV.
+      Convert <span class="hero-accent">.txt files</span><br/>to TSV instantly.
     </h1>
     <p class="hero-sub">
       Upload multiple <b>.txt</b> files or a single <b>.zip</b> containing them.
-      All files are merged into a single <b>.tsv</b> output — header taken from
-      the first file, duplicates stripped.
+      We'll convert each one to TSV and return a zip you can download.
     </p>
   </div>
 
@@ -85,7 +89,7 @@
           </div>
           <div class="drop-title" id="dropTitle">Drag &amp; drop your files here</div>
           <div class="drop-sub">or click to browse</div>
-          <div class="drop-formats">.TXT files &nbsp;·&nbsp; or a single .ZIP containing .TXT files</div>
+          <div class="drop-formats">.TXT files &nbsp;·&nbsp; or a single .ZIP containing .TXT files &nbsp;·&nbsp; output: one merged .TSV</div>
         </div>
         <input type="file" name="files" id="fileInput" accept=".txt,.zip" multiple required/>
       </div>
@@ -116,7 +120,7 @@
     </div>
     <div class="feat">
       <span class="feat-dot" style="background:#b84fc8"></span>
-      One merged .tsv output
+      Download as .zip
     </div>
   </div>
 
